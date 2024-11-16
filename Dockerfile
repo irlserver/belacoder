@@ -22,4 +22,5 @@ RUN make
 RUN cp ./belacoder /bela-out
 
 FROM scratch AS export
-COPY --from=build /bela-out /
+RUN mkdir -p /usr/bin
+COPY --from=build /bela-out /usr/bin/
