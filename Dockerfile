@@ -18,7 +18,6 @@ WORKDIR /belacoder
 COPY . .
 
 RUN mkdir /bela-out
-RUN make -j
 RUN make DESTDIR=/bela-out
 
 FROM scratch AS export
