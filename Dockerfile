@@ -17,10 +17,9 @@ RUN mkdir -p /build; \
 WORKDIR /belacoder
 COPY . .
 
-RUN mkdir /bela-out
+RUN mkdir -p /bela-out/usr/bin/
 RUN make
-RUN cp ./belacoder /bela-out
+RUN cp ./belacoder /bela-out/usr/bin/
 
 FROM scratch AS export
-RUN mkdir -p /usr/bin
-COPY --from=build /bela-out /usr/bin/
+COPY --from=build /bela-out /
