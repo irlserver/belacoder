@@ -29,9 +29,13 @@ jobs:
           package: irl-belacoder
           package_root: ./build
           maintainer: IRL Software <mail@irl.software>
+          desc: "Live video encoder with dynamic bitrate control and SRT support"
           version: ${{ steps.semantic.outputs.version }}
           #depends: "openssl, libssl-dev"
+          homepage: "https://irl.software"
           arch: "arm64"
+          section: "unknown"
+          compress_type: zstd
       - uses: actions/upload-artifact@v4
         with:
           name: belacoder-arm64.deb
