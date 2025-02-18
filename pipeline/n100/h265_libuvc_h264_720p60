@@ -1,0 +1,12 @@
+libuvch264src ! video/x-h264,width=1280,height=720,framerate=60/1,profile=high ! 
+identity name=ptsfixup signal-handoffs=TRUE ! 
+queue max-size-time=10000000000 max-size-buffers=1000 max-size-bytes=41943040 ! h264parse ! qsvh264dec ! 
+identity name=v_delay signal-handoffs=TRUE ! 
+video/x-raw,format=NV12 ! videoconvert ! 
+textoverlay text='' valignment=top halignment=right font-desc="Monospace, 5" name=overlay ! queue ! 
+qsvh265enc gop-size=120 rate-control=1 target-usage=7 low-latency=true name=venc_kbps ! 
+h265parse config-interval=-1 ! queue max-size-time=10000000000 max-size-buffers=1000 max-size-bytes=41943040 ! mux. 
+alsasrc device=hw:1 ! audio/x-raw,rate=48000,channels=2 ! identity name=a_delay signal-handoffs=TRUE ! volume volume=1.0 ! 
+audioconvert ! voaacenc bitrate=128000 ! aacparse ! queue max-size-time=10000000000 max-size-buffers=1000 ! mux. 
+mpegtsmux name=mux !
+appsink name=appsink
