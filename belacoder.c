@@ -49,6 +49,9 @@
                                           // BITRATE_DECR_MIN + cur_bitrate/BITRATE_DECR_SCALE
 
 // settings ranges
+#define TS_PKT_SIZE 188
+#define REDUCED_SRT_PKT_SIZE ((TS_PKT_SIZE)*6)
+#define DEFAULT_SRT_PKT_SIZE ((TS_PKT_SIZE)*7)
 #define MAX_AV_DELAY 10000
 #define MIN_SRT_LATENCY 100
 #define MAX_SRT_LATENCY 10000
@@ -82,6 +85,7 @@ int cur_bitrate = MIN_BITRATE;
 char *bitrate_filename = NULL;
 
 int srt_latency = DEF_SRT_LATENCY;
+int srt_pkt_size = DEFAULT_SRT_PKT_SIZE;
 
 uint64_t getms() {
   struct timespec time = {0, 0};
@@ -173,8 +177,7 @@ ret_err:
   return -2;
 }
 
-#define SRT_PKT_SIZE 1316
-#define RTT_TO_BS(rtt) ((throughput / 8) * (rtt) / SRT_PKT_SIZE)
+#define RTT_TO_BS(rtt) ((throughput / 8) * (rtt) / srt_pkt_size)
 void update_bitrate(SRT_TRACEBSTATS *stats, uint64_t ctime) {
   /*
    * Send buffer size stats
@@ -326,7 +329,7 @@ r:
 }
 
 GstFlowReturn new_buf_cb(GstAppSink *sink, gpointer user_data) {
-  static char pkt[SRT_PKT_SIZE];
+  static char pkt[DEFAULT_SRT_PKT_SIZE];
   static int pkt_len = 0;
   GstFlowReturn code = GST_FLOW_OK;
 
@@ -339,16 +342,16 @@ GstFlowReturn new_buf_cb(GstAppSink *sink, gpointer user_data) {
   buffer = gst_sample_get_buffer(sample);
   gst_buffer_map(buffer, &map, GST_MAP_READ);
 
-  // We send SRT_PKT_SIZE size packets, splitting and merging samples if needed
+  // We send srt_pkt_size size packets, splitting and merging samples if needed
   int sample_sz = map.size;
   do {
-    int copy_sz = min(SRT_PKT_SIZE - pkt_len, sample_sz);
+    int copy_sz = min(srt_pkt_size - pkt_len, sample_sz);
     memcpy((void *)pkt + pkt_len, map.data, copy_sz);
     pkt_len += copy_sz;
 
-    if (pkt_len == SRT_PKT_SIZE) {
-      int nb = srt_send(sock, pkt, SRT_PKT_SIZE);
-      if (nb != SRT_PKT_SIZE) {
+    if (pkt_len == srt_pkt_size) {
+      int nb = srt_send(sock, pkt, srt_pkt_size);
+      if (nb != srt_pkt_size) {
         if (!quit) {
           fprintf(stderr, "The SRT connection failed, exiting\n");
           stop();
@@ -453,6 +456,7 @@ void exit_syntax() {
   fprintf(stderr, "  -d <delay>          Audio-video delay in milliseconds\n");
   fprintf(stderr, "  -s <streamid>       SRT stream ID\n");
   fprintf(stderr, "  -l <latency>        SRT latency in milliseconds\n");
+  fprintf(stderr, "  -r                  Reduced SRT packet size\n");
   fprintf(stderr, "  -b <bitrate file>   Bitrate settings file, see below\n\n");
   fprintf(stderr, "Bitrate settings file syntax:\n");
   fprintf(stderr, "MIN BITRATE (bps)\n");
@@ -575,7 +579,7 @@ int main(int argc, char** argv) {
   char *stream_id = NULL;
   srt_latency = DEF_SRT_LATENCY;
 
-  while ((opt = getopt(argc, argv, "d:b:s:l:v")) != -1) {
+  while ((opt = getopt(argc, argv, "d:b:s:l:rv")) != -1) {
     switch (opt) {
       case 'b':
         bitrate_filename = optarg;
@@ -597,6 +601,9 @@ int main(int argc, char** argv) {
                   MIN_SRT_LATENCY, MAX_SRT_LATENCY);
           exit_syntax();
         }
+        break;
+      case 'r':
+        srt_pkt_size = REDUCED_SRT_PKT_SIZE;
         break;
       case 'v':
         printf(VERSION "\n");
